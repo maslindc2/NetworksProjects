@@ -1,8 +1,0 @@
-GET http://zhiju.me/networks/valid.html HTTP/1.1
-GET http://zhiju.me/networks/404.html HTTP/1.1
-GET http://zhiju.me/networks/500.html HTTP/1.1
-
-PARSE http://zhiju.me/networks/valid.html HTTP/1.1
-GET http://zhiju.me:8080/networks/valid.html HTTP/1.1
-
-
