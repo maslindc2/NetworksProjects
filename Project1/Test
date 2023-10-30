@@ -8,3 +8,11 @@ GET https://zhiju.me/networks/valid.html
 
 GET http://www.troelsgravesen.dk/The-Loudspeaker-3_Dominic.htm HTTP/1.1
 
+
+
+Test Cases for Unit Testing
+1. createSocket
+	- Create socket on valid port with respect to cs1
+	- Create socket on invalid port with respect to cs1
+	- Add valid port number error handling here
+2. 
