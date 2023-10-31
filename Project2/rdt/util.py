@@ -6,19 +6,21 @@ def create_checksum(packet_wo_checksum):
 
     Returns:
       the checksum in bytes
-
     """
-    # Calculate the checksum for the packet
+    
+    if len(packet_wo_checksum) % 2 == 1:
+        packet_wo_checksum += b'\x00'
     checksum = 0
     for i in range(0, len(packet_wo_checksum), 2):
-        if i + 1 < len(packet_wo_checksum):
-            checksum += (packet_wo_checksum[i] + (packet_wo_checksum[i + 1] << 8))
-        else:
-            checksum += packet_wo_checksum[i]
-    checksum = (checksum & 0xffff)
+        word  = (packet_wo_checksum[i] << 8) + packet_wo_checksum[i+1]
+        checksum += word
+
+        # If the checksum overflows beyond 16 bits we need to add the carry bit
+        if checksum > 0xffff:
+            checksum = (checksum & 0xffff) + 1
+    # Take the ones complement of the sum
+    checksum = ~checksum & 0xffff
     return checksum.to_bytes(2, byteorder='big')
-
-
 
 def verify_checksum(packet):
     """verify packet checksum (MUST-HAVE DO-NOT-CHANGE)
@@ -50,36 +52,30 @@ def make_packet(data_str, ack_num, seq_num):
     a created packet in bytes
 
   """
-  # Ensure data_str is no longer than 1000 bytes
-  if len(data_str) > 1000:
-    raise ValueError("Data string too long")
 
-  # Create the initial 10-byte header (8 bytes for "COMPNETW" and 2 bytes for reserved checksum)
-  header = b"COMPNETW"
+  header = b'COMPNETW'
+
+  if data_str:
+      data = data_str.encode('utf-8')
+      length_indicator = len(header) + len(data)
+  else:
+      data = b""
+      length_indicator = len(header)
   
-  # Here we reserve 16 bits for the checksum
-  header += b"\x00\x00"
+  ack_bit = ack_num << 14
+  seq_bit = seq_num << 15
 
-  # Get the packet length of header and data, we shift ack_num 14 bits so the ack will be stored at the 15th bit, seq_num is shifted 15 bits to the left
-  # so we can store the sequence number at the 16th bit position. 
-  packetLength = (len(header) + len(data_str)) | (ack_num << 14) | (seq_num << 15)
+  packet_info = length_indicator | ack_bit | seq_bit
 
-  # Convert the packet length to bytes. 
-  packetLengthBytes = packetLength.to_bytes(2, byteorder='big')
+  packet_info_bytes = packet_info.to_bytes(2, byteorder='big')
 
-  # Combine header, packetLength and data together
-  packet = header + packetLengthBytes + data_str.encode()
-  
-  # Send the packet that does not has an empty reserved spot for the checksum over to create_checksum
+  packet = header + b'\x00\x00' + packet_info_bytes + data
+
   checksum = create_checksum(packet)
-  
-  # Now we insert the checksum into that reserved space and we get our completed packet
-  packet = packet[:8] + checksum + packet[10:]
-  print(packet)
 
-  # return the complete udp packet
-  return packet
+  packet_with_checksum = packet[:8] + checksum + packet[10:]
 
+  return packet_with_checksum
 
 
 ###### These three functions will be automatically tested while grading. ######
