@@ -57,25 +57,44 @@ def make_packet(data_str, ack_num, seq_num):
 
   if data_str:
       data = data_str.encode('utf-8')
-      length_indicator = len(header) + len(data)
+
+      # Header is 8 bytes, 2 bytes for checksum, 2 bytes for length w/ACK and SEQ, data
+      packet_length = len(header) + 2 + 2 + len(data)
+
+      ack_bit = ack_num << 14
+      seq_bit = seq_num << 15
+
+      packet_info = packet_length | ack_bit | seq_bit
+
+      packet_info_bytes = packet_info.to_bytes(2, byteorder='big')
+
+      packet = header + b'\x00\x00' + packet_info_bytes + data
+
+      checksum = create_checksum(packet)
+
+      packet_with_checksum = packet[:8] + checksum + packet[10:]
+
+      return packet_with_checksum
   else:
-      data = b""
-      length_indicator = len(header)
-  
-  ack_bit = ack_num << 14
-  seq_bit = seq_num << 15
+      packet_length = len(header) + 2 + 2
+      ack_bit = ack_num << 14
+      seq_bit = seq_num << 15
 
-  packet_info = length_indicator | ack_bit | seq_bit
+      packet_info = packet_length | ack_bit | seq_bit
 
-  packet_info_bytes = packet_info.to_bytes(2, byteorder='big')
+      packet_info_bytes = packet_info.to_bytes(2, byteorder='big')
+      
+      packet = header + b'\x00\x00' + packet_info_bytes
 
-  packet = header + b'\x00\x00' + packet_info_bytes + data
 
-  checksum = create_checksum(packet)
+      checksum = create_checksum(packet)
 
-  packet_with_checksum = packet[:8] + checksum + packet[10:]
+      #Insert checksum into the packet replacing the checksum placeholder
+      packet_with_checksum = packet[:8] + checksum + packet[10:]
 
-  return packet_with_checksum
+      return packet_with_checksum
+
+      
 
 
 ###### These three functions will be automatically tested while grading. ######
