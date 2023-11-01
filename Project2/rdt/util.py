@@ -121,7 +121,7 @@ def make_packet(data_str, ack_num, seq_num):
         packet_length_bytes = create_packet_length_section(packet_length, ack_num, seq_num)
         
         # Here we are building out the packet with a 2 byte placeholder for the checksum
-        packet_wo_checksum = header + b'\x00\x00' + packet_length_bytes + data
+        packet_wo_checksum = header + b'\x00\x00' + packet_length_bytes
 
         # Create the checksum for the packet we have made
         checksum = create_checksum(packet_wo_checksum)
