@@ -23,26 +23,6 @@ def create_checksum(packet_wo_checksum):
         checksum = ~checksum & 0xffff
         return checksum.to_bytes(2, byteorder='big')
 
-def verify_checksum(packet):
-    """
-    Verify the packet's checksum (MUST-HAVE DO-NOT-CHANGE)
-    Args: 
-        packet: the whole (including original checksum) packet byte data
-
-    Returns:
-        True if the packet checksum is the same as specified in the checksum field
-        False otherwise
-    """
-
-    # Extract the checksum, convert it to an int from bytes
-    received_checksum = packet[8:10]
-
-    # Calculate a new checksum using the packet header, checksum placeholder, length, and data
-    calculated_checksum = create_checksum(packet[:8] + b'\x00\x00' + packet[10:])
-
-    # See if the received_checksum is the same as the checksum we just calculated
-    return received_checksum == calculated_checksum
-
 
 def create_packet_length_section(packet_length:int, ack_num, seq_num) -> bytes:
     """
@@ -132,7 +112,26 @@ def make_packet(data_str, ack_num, seq_num):
         # Return our UDP packet with the checksum
         return packet_with_checksum
     
-###### These three functions will be automatically tested while grading. ######
-###### Hence, your implementation should NOT make any changes to         ######
-###### the above function names and args list.                           ######
-###### You can have other helper functions if needed.                    ######  
+
+
+if __name__ == "__main__":
+    
+    """
+    If the binary is 010000 which is the length 16
+    If the binary string is 01000000 = 64 as decimal or @ as ASCII or 0x40 as hex
+    If the binary string is 01000001 = 65 as decimal or A as ASCII or 0x41 as hex
+    If the binary string is 01000010 = 66 as decimal or B as ASCII or 0x42 as hex
+    If the binary string is 01000011 = 67 as decimal or C as ASCII or 0x43 as hex
+    Then why is an ACK = 1 and SEQ = 1 equal 0x41
+    
+    While in office hours ask if the test suite uses an empty string for testing as currently we see if it's none type for generating ACK packets
+    """
+
+    packet1 = make_packet('msg1', 0, 0)
+    print(packet1)
+
+    packet2 = make_packet('msg2', 0, 1)
+    print(packet2)
+
+    packet3 = make_packet('msg3', 0, 0)
+    print(packet3)

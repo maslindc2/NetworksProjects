@@ -1,5 +1,5 @@
 import sys
-from Proxy import Proxy
+from code.Proxy import Proxy
 
 if __name__ == "__main__":
     # Check if the length of issued commands are correct
