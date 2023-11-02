@@ -33,27 +33,34 @@ class Sender:
                 #Resubmit the UDP packet
                 print("No response received. Retrying....")
                 return None, None
+    
+    def process_length(self, rcv_packet: bytes):
+
+        # Extract the length section
+        packet_length_bytes = rcv_packet[10:]
+            
+        # Convert it to an int
+        packet_length_int = int.from_bytes(packet_length_bytes, 'big')
+            
+        # Convert the int into a binary string
+        packet_length_binary = bin(packet_length_int)
+
+        rcv_ack_num = int(packet_length_binary[-2])
+        rcv_sequence_num = int(packet_length_binary[-1])
         
-    def isACK(self, rcv_packet: bytes, seq_num) -> bool:
-        print(f"Received Packet: {rcv_packet}")
-        # Extract ACK number and sequence number
+        return rcv_ack_num, rcv_sequence_num
+
+    def extract_ACK(self, rcv_packet: bytes):
+        
+        # An ACK packet is always going to be of length 12 bytes
         if len(rcv_packet) == 12:
-            print("We got an ACK Packet")
-            length_bytes = rcv_packet[10:]
+            rcv_ack_num, rcv_seq_num = self.process_length(rcv_packet)
 
-            # Extract the integer values from the byte string
-            ack_number = (int.from_bytes(length_bytes, byteorder='big') >> 14) & 1
-            sequence_number = (int.from_bytes(length_bytes, byteorder='big') >> 15) & 1
-
-            if ack_number == 1 and sequence_number == seq_num:
-                return True
-            else:
-                return False
+            print(f"Got an ACK packet, ACK={rcv_ack_num} SEQ={rcv_seq_num}")
+            return rcv_ack_num, rcv_seq_num
         else:
-            return False
-        
-
-
+            print(f"ERROR For some reason we got a data packet")
+            return None, None
         
 
     def rdt_send(self, app_msg_str):
@@ -66,40 +73,63 @@ class Sender:
         # Create the UDP socket for communicating with the Receiver
         sender_socket = self.create_socket()
 
-        if sender_socket:
-            print("Created Sender Socket")
+        print("Created Sender Socket")
 
-            print(f"Creating packet with message: {app_msg_str}")
-            ack_num = 0
-            seq_num = 0
-            udp_packet = make_packet(app_msg_str, ack_num, seq_num)
-
-            print(f"Created packet: {udp_packet}")
-
-            # TODO: Setup time out function
-            # Wait 3s
-            sender_socket.settimeout(3)
+        print(f"Creating packet with message: {app_msg_str}")
             
-            while True:
-                try:
+        ack_num = 0
+        seq_num = 0
+        expected_ack_num = 0
+        expected_seq_num = 0
+
+        # Create packet with 0 for ack and 0 for sequence number
+        udp_packet = make_packet(app_msg_str, ack_num, seq_num)
+
+        #TODO: Add function to store the packets to a txt file
+
+        print(f"Created packet: {udp_packet}")
+        
+        # Wait 3s for timeout value
+        sender_socket.settimeout(3)
+        
+        # Send the UDP packet to the localhost on generated port number + 1
+        sender_socket.sendto(udp_packet, ('0.0.0.0', self.port_number+1))
+
+        while True:
+            try:
+                # Print current status
+                print("Waiting for ACK\n")
+                
+                # Receive and store the ack packet
+                rcv_packet, address = self.rdt_recv(sender_socket)
+
+                # If these two variables are NOT NoneType then we got a response
+                if rcv_packet and address:
+                    # Check if the packet was corrupted
+                    if verify_checksum(rcv_packet):
+                        # Let's see what our ack is 
+                        rcv_ack_num, rcv_seq_num = self.extract_ACK(rcv_packet)
+
+                        # If the received sequence number equals the expected sequence number i.e. we send a seq num 0, and we expect to get an ACK back with the sequence number 0
+                        # If we sent the wrong sequence number but we get back the last successfully received packet i.e. we sent seq 0 but the receiver sends the last successfully received packet of seq 0
+                        if expected_seq_num == rcv_seq_num:
+                            if expected_ack_num == rcv_ack_num:
+                                print("Success! We sent the correct packet and got an ACK back")
+                                break
+                            else:
+                                print("OOPS! We sent the wrong sequence number retrying")
+                                if seq_num == 0:
+                                    seq_num = 1
+                                    expected_seq_num = 1
+                                    expected_ack_num = 1
+                                    
+                                udp_packet = make_packet(app_msg_str, expected_ack_num, seq_num)
+                                print(f"Created packet: {udp_packet}")
+                                sender_socket.sendto(udp_packet, address)
+                                print("SENT PACKET")
+                else:
                     sender_socket.sendto(udp_packet, ('0.0.0.0', self.port_number+1))
-                    print("Waiting for ACK")
-                    
-                    packet_recv, address = self.rdt_recv(sender_socket)
 
-                    if packet_recv and address:
-                        # verify the packet is not corrupt
-                        if not verify_checksum(packet_recv) and not self.isACK(packet_recv, 0):
-                            print(f"CheckSum: {verify_checksum(packet_recv)}")
-                            print(f"ACK Result: {self.isACK(packet_recv, 0)}")
-                            print("SENDING PACKET AGAIN AS IT WAS CORRUPT OR WRONG ACK")
-                            sender_socket.sendto(udp_packet, ('0.0.0.0', self.port_number+1))
-                        else:
-                            print("All Good Send the next one please.....")
-                            break
-                    else:
-                        print("Timeout occurred retrying...")
-
-                except KeyboardInterrupt:
-                    print("User exited with ctrl+c")
-                    break
+            except KeyboardInterrupt:
+                print("User exited with ctrl+c")
+                break

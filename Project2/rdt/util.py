@@ -11,17 +11,25 @@ def create_checksum(packet_wo_checksum):
     # If we have a packet of odd length then we must pad it with an empty byte
     if len(packet_wo_checksum) % 2 == 1:
         packet_wo_checksum += b'\x00'
+    
     checksum = 0
-    for i in range(0, len(packet_wo_checksum), 2):
-        w = (packet_wo_checksum[i] << 8) + packet_wo_checksum[i+1]
-        checksum += w
 
-        # If the checksum has a carry-bit i.e. the length is not 16 bits we need to add the carry bit
-        if checksum > 0xffff:
-            checksum = (checksum & 0xffff) + 1
-        # Take the ones complement of the sum
-        checksum = ~checksum & 0xffff
-        return checksum.to_bytes(2, byteorder='big')
+    for i in range(0, len(packet_wo_checksum), 2):
+        checksum_word = (packet_wo_checksum[i] << 8) + packet_wo_checksum[i+1]
+        checksum += checksum_word
+
+    if checksum >> 16:
+        # Here we adjust for any carry bits
+        # Start by shifting the checksum right by 16 bits, if a carry bit exists we will isolate it here
+        # Next we mask out the lowest 16 bits so we have only the value without the carry bit
+        # Finally we add the carry bit to the left over value hopefully handling any carry bits
+        checksum = (checksum >> 16) + (checksum & 0xFFFF)
+    
+    # Now we take the ones complement of the calculated checksum and we have our final checksum value
+    checksum = ~checksum & 0xFFFF
+
+    # Return our checksum in bytes that take up a 2 byte space. 
+    return checksum.to_bytes(2, byteorder='big')
 
 def verify_checksum(packet):
     """
