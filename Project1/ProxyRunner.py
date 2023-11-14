@@ -1,5 +1,6 @@
 import sys
-from code.Proxy import Proxy
+import asyncio
+from Proxy import Proxy
 
 if __name__ == "__main__":
     # Check if the length of issued commands are correct
@@ -18,7 +19,7 @@ if __name__ == "__main__":
         
         # If we were able to cast the requested listening port to an int start the server
         proxy = Proxy()
-        proxy.server(listeningPort)
+        asyncio.run(proxy.server(listeningPort))
 
     # The user didn't use an integer for the server's listening port
     except ValueError:
