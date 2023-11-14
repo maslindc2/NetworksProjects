@@ -1,10 +1,3 @@
 {
-    "python.testing.unittestEnabled": true,
-    "python.testing.pytestEnabled": false,
-    "python.testing.nosetestsEnabled": false,
-    "python.testing.unittestArgs": [
-        "-v",
-        "-s",
-        "./tests"  // Replace with the path to your test directory if it's different
-    ]
+    "python.analysis.autoImportCompletions": false
 }
